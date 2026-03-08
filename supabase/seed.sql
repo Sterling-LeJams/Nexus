@@ -1,0 +1,2 @@
+-- Nexus seed data
+-- Add seed data here as the schema evolves
