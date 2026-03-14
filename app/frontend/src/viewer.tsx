@@ -1,5 +1,12 @@
 import * as OBC from "@thatopen/components";
+import * as THREE from "three";
 import { useEffect, useRef } from "react";
+import { useThemeStore } from "./store/themeStore";
+
+const LIGHT_BG = 0xd8e0ed;
+const DARK_BG = 0x818a99;
+const LIGHT_ORB = 0x333333;
+const DARK_ORB = 0xffffff;
 
 // Fragments are That Open Engine own custom file type .frag. That Open Engine does not directly
 // support IFC files so first it converts the file to a .frag file.
@@ -85,10 +92,17 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let disposed = false;
+    let cleanupOrb: (() => void) | null = null;
+    let cleanupTheme: (() => void) | null = null;
+    let componentsRef: OBC.Components | null = null;
+    let workerBlobUrl: string | null = null;
+
     const init = async () => {
       if (!containerRef.current) return;
 
       const components = new OBC.Components();
+      componentsRef = components;
       const worlds = components.get(OBC.Worlds);
       const world = worlds.create<
         OBC.SimpleScene,
@@ -98,17 +112,105 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
 
       world.scene = new OBC.SimpleScene(components);
       world.scene.setup();
-      world.scene.three.background = null;
+      const isDark = useThemeStore.getState().isDarkMode;
+      world.scene.three.background = new THREE.Color(
+        isDark ? DARK_BG : LIGHT_BG,
+      );
 
       const container = containerRef.current!;
       world.renderer = new OBC.SimpleRenderer(components, container);
       world.camera = new OBC.OrthoPerspectiveCamera(components);
 
       components.init();
-      const ifcLoader = components.get(OBC.IfcLoader);
-      ifcLoader.onIfcImporterInitialized.add((importer) => {
-        console.log(importer.classes);
+
+      const updateTheme = (dark: boolean) => {
+        world.scene.three.background = new THREE.Color(
+          dark ? DARK_BG : LIGHT_BG,
+        );
+        orbMaterial.color.setHex(dark ? DARK_ORB : LIGHT_ORB);
+      };
+      cleanupTheme = useThemeStore.subscribe((state) => updateTheme(state.isDarkMode));
+
+      // --- Click-to-Orbit Pivot with Pulsating Orb ---
+      const fragments = components.get(OBC.FragmentsManager);
+      const raycasters = components.get(OBC.Raycasters);
+      const raycaster = raycasters.get(world);
+
+      const orbGeometry = new THREE.SphereGeometry(0.15, 24, 24);
+      const orbMaterial = new THREE.MeshBasicMaterial({
+        color: isDark ? DARK_ORB : LIGHT_ORB,
+        transparent: true,
+        depthTest: false,
       });
+      const orbMesh = new THREE.Mesh(orbGeometry, orbMaterial);
+      orbMesh.renderOrder = 999;
+      orbMesh.visible = false;
+      world.scene.three.add(orbMesh);
+
+      let orbActive = false;
+      let orbAnimTime = 0;
+      const timer = new THREE.Timer();
+      timer.connect(document);
+
+      world.renderer!.onBeforeUpdate.add(() => {
+        // starts timer
+        timer.update();
+        if (!orbActive) return;
+
+        // Delta time from when an animation occured
+        const delta = timer.getDelta();
+
+        orbAnimTime += delta;
+
+        const cyclePos = orbAnimTime % 0.6;
+
+        if (cyclePos < 0.4) {
+          const t = cyclePos / 0.4;
+          const ease = Math.sin(t * Math.PI);
+          const scale = 1.0 + 0.6 * ease;
+          orbMesh.scale.setScalar(scale);
+        } else {
+          orbMesh.scale.setScalar(1.0);
+        }
+      });
+
+      const onPointerDown = async (event: PointerEvent) => {
+        if (event.button !== 0) return;
+        const hit = await raycaster.castRay();
+
+        if (!hit) return;
+        const { x, y, z } = hit.point;
+        world.camera.controls.setOrbitPoint(x, y, z);
+        orbMesh.position.set(x, y, z);
+        orbMesh.scale.setScalar(1.0);
+        orbMesh.visible = true;
+        orbActive = true;
+        orbAnimTime = 0;
+      };
+
+      const onPointerUp = (event: PointerEvent) => {
+        if (event.button !== 0) return;
+        orbMesh.visible = false;
+        orbActive = false;
+      };
+
+      container.addEventListener("pointerdown", onPointerDown, {
+        capture: true,
+      });
+      window.addEventListener("pointerup", onPointerUp);
+
+      cleanupOrb = () => {
+        container.removeEventListener("pointerdown", onPointerDown as any, {
+          capture: true,
+        });
+        window.removeEventListener("pointerup", onPointerUp as any);
+        orbGeometry.dispose();
+        orbMaterial.dispose();
+        timer.dispose();
+        world.scene.three.remove(orbMesh);
+      };
+
+      const ifcLoader = components.get(OBC.IfcLoader);
 
       await ifcLoader.setup({
         autoSetWasm: false,
@@ -117,16 +219,21 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
           absolute: true,
         },
       });
+      if (disposed) return;
 
       const githubUrl =
         "https://thatopen.github.io/engine_fragment/resources/worker.mjs";
       const fetchedUrl = await fetch(githubUrl);
+      if (disposed) return;
+
       const workerBlob = await fetchedUrl.blob();
+      if (disposed) return;
       const workerFile = new File([workerBlob], "worker.mjs", {
         type: "text/javascript",
       });
+
       const workerUrl = URL.createObjectURL(workerFile);
-      const fragments = components.get(OBC.FragmentsManager);
+      workerBlobUrl = workerUrl;
       fragments.init(workerUrl);
 
       world.camera.controls.addEventListener("update", () =>
@@ -171,9 +278,7 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
           buffer = new Uint8Array(data);
         }
         await ifcLoader.load(buffer, false, "example", {
-          processData: {
-            progressCallback: (progress) => console.log(progress),
-          },
+          processData: {},
         });
       };
 
@@ -194,6 +299,14 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
     };
 
     init();
+
+    return () => {
+      disposed = true;
+      cleanupOrb?.();
+      cleanupTheme?.();
+      if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl);
+      componentsRef?.dispose();
+    };
   }, []);
 
   return (

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import * as BUI from "@thatopen/ui";
 import InitViewer, { type ViewerCallbacks } from "./viewer";
 import { defaultIfcExample } from "./types";
+import { useThemeStore } from "./store/themeStore";
 
 BUI.Manager.init();
 
@@ -11,26 +12,23 @@ function App() {
   const callbacksRef = useRef<ViewerCallbacks | null>(null);
   const [modelLoaded, setModelLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen] = useState(true);
   const [menu, setMenu] = useState<MenuState>("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleLoadExample = async () => {
-    if (!callbacksRef.current) return;
-    setMenu("idle");
-    setLoading(true);
-    await callbacksRef.current.loadIfc(defaultIfcExample.filePath);
-    setLoading(false);
-  };
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
+  const toggleTheme = useThemeStore((state) => state.toggleTheme);
 
   const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
+    source?: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = event.target.files?.[0];
-    if (!file || !callbacksRef.current) return;
+    if (!callbacksRef.current) return;
+    const input = source
+      ? source.target.files?.[0]
+      : defaultIfcExample.filePath;
+    if (!input) return;
     setMenu("idle");
     setLoading(true);
-    await callbacksRef.current.loadIfc(file);
+    await callbacksRef.current.loadIfc(input);
     setLoading(false);
   };
 
@@ -76,7 +74,7 @@ function App() {
               ) : menu === "choose" ? (
                 <>
                   <button
-                    onClick={handleLoadExample}
+                    onClick={() => handleFileUpload()}
                     className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-medium transition-colors"
                   >
                     Load Example IFC
@@ -107,7 +105,45 @@ function App() {
         </div>
       )}
 
-      {/* Select IFC modal */}
+      {/* Theme toggle */}
+      <button
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 w-10 h-10 rounded-lg bg-gray-900/90 backdrop-blur-sm border border-white/10 shadow-xl text-white flex items-center justify-center hover:bg-gray-800 transition-colors"
+      >
+        {isDarkMode ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-5 h-5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
+            />
+          </svg>
+        ) : (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-5 h-5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"
+            />
+          </svg>
+        )}
+      </button>
+
+      {/* Select IFC model */}
       {menu === "selectIfc" && (
         <div className="absolute inset-0 flex items-center justify-center z-50">
           <div
@@ -141,26 +177,6 @@ function App() {
           </div>
         </div>
       )}
-
-      {/* Panel toggle button */}
-      <button
-        onClick={() => setPanelOpen((open) => !open)}
-        className="absolute bottom-4 right-4 rounded-full bg-gray-900/90 backdrop-blur-sm border border-white/10 shadow-xl text-white w-10 h-10 flex items-center justify-center hover:bg-gray-700/90 transition-colors"
-        title="Toggle settings"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          className="w-5 h-5"
-        >
-          <path
-            fillRule="evenodd"
-            d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 0 0-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 0 0-2.282.819l-.922 1.597a1.875 1.875 0 0 0 .432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 0 0 0 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 0 0-.432 2.385l.922 1.597a1.875 1.875 0 0 0 2.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 0 0 2.28-.819l.923-1.597a1.875 1.875 0 0 0-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 0 0 0-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 0 0-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 0 0-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 0 0-1.85-1.567h-1.843ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </button>
     </div>
   );
 }
