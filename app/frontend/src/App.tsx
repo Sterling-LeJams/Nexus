@@ -4,10 +4,11 @@ import InitViewer, { type ViewerCallbacks } from "./viewer";
 import { defaultIfcExample } from "./types";
 import { useThemeStore } from "./store/themeStore";
 import hamburgerIcon from "./assets/hamburger.svg";
+import CommandPallete from "./components/CommandPallete";
 
 BUI.Manager.init();
 
-type MenuState = "idle" | "choose" | "selectIfc";
+type MenuState = "idle" | "open" | "choose" | "selectIfc";
 
 function App() {
   const callbacksRef = useRef<ViewerCallbacks | null>(null);
@@ -55,7 +56,7 @@ function App() {
       {/* Hamburger menu */}
       <div className="absolute top-4 left-4 flex flex-col gap-2">
         <button
-          onClick={() => setMenu(menuOpen ? "idle" : "choose")}
+          onClick={() => setMenu(menuOpen ? "idle" : "open")}
           className="w-10 h-10 rounded-xl bg-white/50 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white/70 transition-colors"
         >
           <img src={hamburgerIcon} alt="Menu" className="w-5 h-5" />
@@ -66,31 +67,44 @@ function App() {
             <div className="px-4 py-3 flex flex-col gap-2">
               {loading ? (
                 <p className="text-sm text-gray-700">Conversion in progress...</p>
-              ) : !modelLoaded ? (
-                menu === "choose" ? (
-                  <>
-                    <button
-                      onClick={() => handleFileUpload()}
-                      className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors"
-                    >
-                      Load Example IFC
-                    </button>
-                    <button
-                      onClick={() => setMenu("selectIfc")}
-                      className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-2 text-sm font-medium text-white transition-colors"
-                    >
-                      Select IFC
-                    </button>
-                  </>
-                ) : null
-              ) : (
-                <button
-                  onClick={() => callbacksRef.current?.downloadFragments()}
-                  className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-medium text-white transition-colors"
-                >
-                  Download Fragments
-                </button>
-              )}
+              ) : menu === "open" ? (
+                !modelLoaded ? (
+                  <button
+                    onClick={() => setMenu("choose")}
+                    className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors"
+                  >
+                    Load Model
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => callbacksRef.current?.downloadFragments()}
+                    className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-medium text-white transition-colors"
+                  >
+                    Download Fragments
+                  </button>
+                )
+              ) : menu === "choose" ? (
+                <>
+                  <button
+                    onClick={() => handleFileUpload()}
+                    className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors"
+                  >
+                    Load Example IFC
+                  </button>
+                  <button
+                    onClick={() => setMenu("selectIfc")}
+                    className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-2 text-sm font-medium text-white transition-colors"
+                  >
+                    Select IFC
+                  </button>
+                  <button
+                    onClick={() => setMenu("open")}
+                    className="text-xs text-gray-400 hover:text-gray-300 transition-colors mt-1"
+                  >
+                    Back
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
         )}
@@ -168,6 +182,8 @@ function App() {
           </div>
         </div>
       )}
+
+      <CommandPallete />
     </div>
   );
 }
