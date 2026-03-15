@@ -5,6 +5,8 @@ import { defaultIfcExample } from "./types";
 import { useThemeStore } from "./store/themeStore";
 import hamburgerIcon from "./assets/hamburger.svg";
 import CommandPallete from "./components/CommandPallete";
+import Home from "./components/Home";
+import Button from "./components/Button";
 
 BUI.Manager.init();
 
@@ -55,12 +57,9 @@ function App() {
 
       {/* Hamburger menu */}
       <div className="absolute top-4 left-4 flex flex-col gap-2">
-        <button
-          onClick={() => setMenu(menuOpen ? "idle" : "open")}
-          className="w-10 h-10 rounded-xl bg-white/50 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white/70 transition-colors"
-        >
+        <Button onClick={() => setMenu(menuOpen ? "idle" : "open")}>
           <img src={hamburgerIcon} alt="Menu" className="w-5 h-5" />
-        </button>
+        </Button>
 
         {menuOpen && (
           <div className="w-56 rounded-xl bg-white/50 backdrop-blur-sm shadow-lg">
@@ -111,9 +110,9 @@ function App() {
       </div>
 
       {/* Theme toggle */}
-      <button
+      <Button
         onClick={toggleTheme}
-        className="absolute top-4 right-4 w-10 h-10 rounded-lg bg-gray-900/90 backdrop-blur-sm border border-white/10 shadow-xl text-white flex items-center justify-center hover:bg-gray-800 transition-colors"
+        className="absolute top-4 right-4"
       >
         {isDarkMode ? (
           <svg
@@ -146,7 +145,7 @@ function App() {
             />
           </svg>
         )}
-      </button>
+      </Button>
 
       {/* Select IFC modal */}
       {menu === "selectIfc" && (
@@ -182,6 +181,8 @@ function App() {
           </div>
         </div>
       )}
+
+      <Home />
 
       <CommandPallete />
     </div>
