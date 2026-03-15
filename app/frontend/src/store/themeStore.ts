@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export const LIGHT_BG = 0xd8e0ed;
+export const DARK_BG = 0x818a99;
+
 interface ThemeState {
   isDarkMode: boolean;
   toggleTheme: () => void;

@@ -3,6 +3,7 @@ import * as BUI from "@thatopen/ui";
 import InitViewer, { type ViewerCallbacks } from "./viewer";
 import { defaultIfcExample } from "./types";
 import { useThemeStore } from "./store/themeStore";
+import hamburgerIcon from "./assets/hamburger.svg";
 
 BUI.Manager.init();
 
@@ -12,7 +13,6 @@ function App() {
   const callbacksRef = useRef<ViewerCallbacks | null>(null);
   const [modelLoaded, setModelLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [panelOpen] = useState(true);
   const [menu, setMenu] = useState<MenuState>("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
@@ -32,6 +32,8 @@ function App() {
     setLoading(false);
   };
 
+  const menuOpen = menu !== "idle";
+
   return (
     <div className="relative flex items-center justify-center w-screen h-screen">
       <InitViewer
@@ -50,60 +52,49 @@ function App() {
         onChange={handleFileUpload}
       />
 
-      {/* Control panel */}
-      {panelOpen && (
-        <div className="absolute top-4 left-4 w-64 rounded-xl bg-gray-900/90 backdrop-blur-sm border border-white/10 shadow-xl text-white">
-          <div className="px-4 py-3 border-b border-white/10">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-              Nexus
-            </p>
-            <p className="text-sm font-medium mt-0.5">Controls</p>
-          </div>
+      {/* Hamburger menu */}
+      <div className="absolute top-4 left-4 flex flex-col gap-2">
+        <button
+          onClick={() => setMenu(menuOpen ? "idle" : "choose")}
+          className="w-10 h-10 rounded-xl bg-white/50 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white/70 transition-colors"
+        >
+          <img src={hamburgerIcon} alt="Menu" className="w-5 h-5" />
+        </button>
 
-          <div className="px-4 py-3 flex flex-col gap-2">
-            {loading ? (
-              <p className="text-sm text-gray-300">Conversion in progress...</p>
-            ) : !modelLoaded ? (
-              menu === "idle" ? (
+        {menuOpen && (
+          <div className="w-56 rounded-xl bg-white/50 backdrop-blur-sm shadow-lg">
+            <div className="px-4 py-3 flex flex-col gap-2">
+              {loading ? (
+                <p className="text-sm text-gray-700">Conversion in progress...</p>
+              ) : !modelLoaded ? (
+                menu === "choose" ? (
+                  <>
+                    <button
+                      onClick={() => handleFileUpload()}
+                      className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors"
+                    >
+                      Load Example IFC
+                    </button>
+                    <button
+                      onClick={() => setMenu("selectIfc")}
+                      className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-2 text-sm font-medium text-white transition-colors"
+                    >
+                      Select IFC
+                    </button>
+                  </>
+                ) : null
+              ) : (
                 <button
-                  onClick={() => setMenu("choose")}
-                  className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-medium transition-colors"
+                  onClick={() => callbacksRef.current?.downloadFragments()}
+                  className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-medium text-white transition-colors"
                 >
-                  Load IFC
+                  Download Fragments
                 </button>
-              ) : menu === "choose" ? (
-                <>
-                  <button
-                    onClick={() => handleFileUpload()}
-                    className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-medium transition-colors"
-                  >
-                    Load Example IFC
-                  </button>
-                  <button
-                    onClick={() => setMenu("selectIfc")}
-                    className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-2 text-sm font-medium transition-colors"
-                  >
-                    Select IFC
-                  </button>
-                  <button
-                    onClick={() => setMenu("idle")}
-                    className="text-xs text-gray-400 hover:text-gray-300 transition-colors mt-1"
-                  >
-                    Back
-                  </button>
-                </>
-              ) : null
-            ) : (
-              <button
-                onClick={() => callbacksRef.current?.downloadFragments()}
-                className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-medium transition-colors"
-              >
-                Download Fragments
-              </button>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Theme toggle */}
       <button
@@ -143,7 +134,7 @@ function App() {
         )}
       </button>
 
-      {/* Select IFC model */}
+      {/* Select IFC modal */}
       {menu === "selectIfc" && (
         <div className="absolute inset-0 flex items-center justify-center z-50">
           <div
