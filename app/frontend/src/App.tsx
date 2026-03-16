@@ -7,6 +7,7 @@ import hamburgerIcon from "./assets/hamburger.svg";
 import CommandPallete from "./components/CommandPallete";
 import Home from "./components/Home";
 import Button from "./components/Button";
+import ViewCube from "./components/ViewCube";
 
 BUI.Manager.init();
 
@@ -14,6 +15,7 @@ type MenuState = "idle" | "open" | "choose" | "selectIfc";
 
 function App() {
   const callbacksRef = useRef<ViewerCallbacks | null>(null);
+
   const [modelLoaded, setModelLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [menu, setMenu] = useState<MenuState>("idle");
@@ -65,7 +67,9 @@ function App() {
           <div className="w-56 rounded-xl bg-white/50 backdrop-blur-sm shadow-lg">
             <div className="px-4 py-3 flex flex-col gap-2">
               {loading ? (
-                <p className="text-sm text-gray-700">Conversion in progress...</p>
+                <p className="text-sm text-gray-700">
+                  Conversion in progress...
+                </p>
               ) : menu === "open" ? (
                 !modelLoaded ? (
                   <button
@@ -110,10 +114,7 @@ function App() {
       </div>
 
       {/* Theme toggle */}
-      <Button
-        onClick={toggleTheme}
-        className="absolute top-4 right-4"
-      >
+      <Button onClick={toggleTheme} className="absolute top-4 right-4">
         {isDarkMode ? (
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -183,7 +184,7 @@ function App() {
       )}
 
       <Home />
-
+      <ViewCube />
       <CommandPallete />
     </div>
   );
