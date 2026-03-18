@@ -8,6 +8,7 @@ import CommandPallete from "./components/CommandPallete";
 import Home from "./components/Home";
 import Button from "./components/Button";
 import ViewCube from "./components/ViewCube";
+import ControlFooter from "./components/ControlFooter";
 
 BUI.Manager.init();
 
@@ -184,7 +185,8 @@ function App() {
       )}
 
       <Home />
-      <ViewCube />
+      <ViewCube callbacksRef={callbacksRef} modelLoaded={modelLoaded} />
+      <ControlFooter />
       <CommandPallete />
     </div>
   );

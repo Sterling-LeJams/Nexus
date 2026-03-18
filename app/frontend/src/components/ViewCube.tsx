@@ -1,9 +1,34 @@
 import * as THREE from "three";
+import * as OBC from "@thatopen/components";
 import React from "react";
 import { useEffect } from "react";
+import type { ViewerCallbacks } from "../viewer/viewer";
 
-function ViewCube() {
+type Props = {
+  callbacksRef: React.RefObject<ViewerCallbacks | null>;
+  modelLoaded: boolean;
+};
+
+async function logCameraOrientations(components: OBC.Components) {
+  const boxer = components.get(OBC.BoundingBoxer);
+  boxer.addFromModels();
+  const faces = ["front", "back", "left", "right", "top", "bottom"] as const;
+
+  for (const face of faces) {
+    const orientation = await boxer.getCameraOrientation(face);
+    console.log(`Camera orientation [${face}]:`, orientation);
+  }
+  boxer.dispose();
+}
+
+function ViewCube({ callbacksRef, modelLoaded }: Props) {
   const viewCubeContainer = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (modelLoaded && callbacksRef.current) {
+      logCameraOrientations(callbacksRef.current.components);
+    }
+  });
 
   useEffect(() => {
     const container = viewCubeContainer.current;

@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { useEffect, useRef } from "react";
 import { useThemeStore, LIGHT_BG, DARK_BG } from "../store/themeStore";
 import { orbit } from "./controls";
-import ControlFooter from "../components/ControlFooter";
+
 
 // Fragments are That Open Engine own custom file type .frag. That Open Engine does not directly
 // support IFC files so first it converts the file to a .frag file.
@@ -78,6 +78,7 @@ import ControlFooter from "../components/ControlFooter";
 export type ViewerCallbacks = {
   loadIfc: (source: string | File) => Promise<void>;
   downloadFragments: () => Promise<void>;
+  components: OBC.Components;
 };
 
 type Props = {
@@ -227,7 +228,7 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
         URL.revokeObjectURL(link.href);
       };
 
-      onInit({ loadIfc, downloadFragments });
+      onInit({ loadIfc, downloadFragments, components });
     };
 
     init();
@@ -244,7 +245,6 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
   return (
     <div id="container" className="relative">
       <div ref={containerRef} style={{ width: "100vw", height: "100vh" }} />
-      <ControlFooter />
     </div>
   );
 }
