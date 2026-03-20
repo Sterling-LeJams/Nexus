@@ -2,35 +2,16 @@ import * as THREE from "three";
 import * as OBC from "@thatopen/components";
 import React from "react";
 import { useEffect, useState, useCallback } from "react";
-import type { ViewerCallbacks } from "../viewer/viewer";
-
-type Props = {
-  callbacksRef: React.RefObject<ViewerCallbacks | null>;
-  modelLoaded: boolean;
-};
-
-const FACE_NAMES = ["Right", "Left", "Top", "Bottom", "Front", "Back"] as const;
-type CubeFace = (typeof FACE_NAMES)[number];
-
-// Target quaternions: rotation needed so the given face is frontal to camera
-const FACE_QUATERNIONS: Record<CubeFace, THREE.Quaternion> = {
-  Front: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0)),
-  Back: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0)),
-  Right: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, 0)),
-  Left: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI / 2, 0)),
-  Top: new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)),
-  Bottom: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)),
-};
-
-// From each face, which face is in each arrow direction
-const ADJACENCY: Record<CubeFace, { up: CubeFace; down: CubeFace; left: CubeFace; right: CubeFace }> = {
-  Front:  { up: "Top",  down: "Bottom", left: "Left",  right: "Right" },
-  Back:   { up: "Top",  down: "Bottom", left: "Right", right: "Left" },
-  Right:  { up: "Top",  down: "Bottom", left: "Front", right: "Back" },
-  Left:   { up: "Top",  down: "Bottom", left: "Back",  right: "Front" },
-  Top:    { up: "Back", down: "Front",  left: "Left",  right: "Right" },
-  Bottom: { up: "Front", down: "Back",  left: "Left",  right: "Right" },
-};
+import {
+  type ViewCubeProps,
+  type CubeFace,
+  type ArrowDirection,
+  FACE_NAMES,
+  FACE_QUATERNIONS,
+  ADJACENCY,
+  ARROW_STYLES,
+  FACE_MAP,
+} from "./types";
 
 function createFaceTexture(label: string): THREE.CanvasTexture {
   const size = 256;
@@ -80,72 +61,90 @@ function selectViewCubeFace(
   return null;
 }
 
-async function logCameraOrientations(components: OBC.Components) {
+async function goToModelView(face: CubeFace, components: OBC.Components) {
+  const worlds = components.get(OBC.Worlds);
+  const world = worlds.list.values().next().value;
+  if (!world?.camera) return;
+
   const boxer = components.get(OBC.BoundingBoxer);
   boxer.addFromModels();
-  const faces = ["front", "back", "left", "right", "top", "bottom"] as const;
 
-  for (const face of faces) {
-    const orientation = await boxer.getCameraOrientation(face);
-    console.log(`Camera orientation [${face}]:`, orientation);
-  }
+  const orientation = await boxer.getCameraOrientation(FACE_MAP[face]);
   boxer.dispose();
+
+  const controls = (world.camera as OBC.OrthoPerspectiveCamera).controls;
+  await controls.setLookAt(
+    orientation.position.x,
+    orientation.position.y,
+    orientation.position.z,
+    orientation.target.x,
+    orientation.target.y,
+    orientation.target.z,
+    true,
+  );
 }
 
-type ArrowDirection = "up" | "down" | "left" | "right";
+const ANIM_SPEED = 3; // units per second — full rotation in ~0.33s
 
-const ARROW_STYLES: Record<ArrowDirection, React.CSSProperties> = {
-  up: {
-    position: "absolute",
-    top: 18,
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: 0,
-    height: 0,
-    borderLeft: "10px solid transparent",
-    borderRight: "10px solid transparent",
-    borderTop: "14px solid #555",
-    cursor: "pointer",
-  },
-  down: {
-    position: "absolute",
-    bottom: 18,
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: 0,
-    height: 0,
-    borderLeft: "10px solid transparent",
-    borderRight: "10px solid transparent",
-    borderBottom: "14px solid #555",
-    cursor: "pointer",
-  },
-  left: {
-    position: "absolute",
-    left: 18,
-    top: "50%",
-    transform: "translateY(-50%)",
-    width: 0,
-    height: 0,
-    borderTop: "10px solid transparent",
-    borderBottom: "10px solid transparent",
-    borderLeft: "14px solid #555",
-    cursor: "pointer",
-  },
-  right: {
-    position: "absolute",
-    right: 18,
-    top: "50%",
-    transform: "translateY(-50%)",
-    width: 0,
-    height: 0,
-    borderTop: "10px solid transparent",
-    borderBottom: "10px solid transparent",
-    borderRight: "14px solid #555",
-    cursor: "pointer",
-  },
-};
+function createCubeAnimator(
+  group: THREE.Group,
+  initialQuat: THREE.Quaternion,
+  onAnimationEnd: (face: CubeFace | null) => void,
+) {
+  const state = {
+    active: false,
+    startQuat: new THREE.Quaternion(),
+    targetQuat: new THREE.Quaternion(),
+    progress: 0,
+    targetFace: null as CubeFace | null,
+  };
 
-function ViewCube({ callbacksRef, modelLoaded }: Props) {
+  function startRotation(face: CubeFace) {
+    if (state.active) return;
+    state.startQuat.copy(group.quaternion);
+    state.targetQuat.copy(FACE_QUATERNIONS[face]);
+    state.progress = 0;
+    state.targetFace = face;
+    state.active = true;
+    onAnimationEnd(null); // hide arrows during animation
+  }
+
+  function startResetRotation() {
+    if (state.active) return;
+    state.startQuat.copy(group.quaternion);
+    state.targetQuat.copy(initialQuat);
+    state.progress = 0;
+    state.targetFace = null;
+    state.active = true;
+    onAnimationEnd(null);
+  }
+
+  function tick(delta: number) {
+    if (!state.active) return;
+    state.progress += delta * ANIM_SPEED;
+    if (state.progress >= 1) {
+      state.progress = 1;
+      state.active = false;
+      group.quaternion.copy(state.targetQuat);
+      onAnimationEnd(state.targetFace);
+    } else {
+      group.quaternion.slerpQuaternions(
+        state.startQuat,
+        state.targetQuat,
+        state.progress,
+      );
+    }
+  }
+
+  return {
+    get isActive() { return state.active; },
+    startRotation,
+    startResetRotation,
+    tick,
+  };
+}
+
+function ViewCube({ callbacksRef, modelLoaded }: ViewCubeProps) {
   const viewCubeContainer = React.useRef<HTMLDivElement>(null);
   const [currentFace, setCurrentFace] = useState<CubeFace | null>(null);
 
@@ -185,7 +184,7 @@ function ViewCube({ callbacksRef, modelLoaded }: Props) {
           map: createFaceTexture(name),
           transparent: true,
           opacity: 0.9,
-        })
+        }),
     );
 
     // Use a group so cube + wireframe rotate together
@@ -205,79 +204,51 @@ function ViewCube({ callbacksRef, modelLoaded }: Props) {
     scene.add(group);
     camera.position.z = 5;
 
-    // Animation state — targetFace is null when resetting to initial position
-    const anim = {
-      active: false,
-      startQuat: new THREE.Quaternion(),
-      targetQuat: new THREE.Quaternion(),
-      progress: 0,
-      targetFace: null as CubeFace | null,
-    };
-
-    const ANIM_SPEED = 3; // units per second — full rotation in ~0.33s
-
-    function startRotation(face: CubeFace) {
-      if (anim.active) return;
-      anim.startQuat.copy(group.quaternion);
-      anim.targetQuat.copy(FACE_QUATERNIONS[face]);
-      anim.progress = 0;
-      anim.targetFace = face;
-      anim.active = true;
-      setCurrentFace(null); // hide arrows during animation
-    }
-
-    function startResetRotation() {
-      if (anim.active) return;
-      anim.startQuat.copy(group.quaternion);
-      anim.targetQuat.copy(initialQuat);
-      anim.progress = 0;
-      anim.targetFace = null;
-      anim.active = true;
-      setCurrentFace(null);
-    }
+    const animator = createCubeAnimator(group, initialQuat, setCurrentFace);
 
     // Expose to arrow/reset click handlers
-    rotateTo.current = startRotation;
-    resetRotation.current = startResetRotation;
+    rotateTo.current = (face: CubeFace) => {
+      animator.startRotation(face);
+      if (callbacksRef.current) {
+        goToModelView(face, callbacksRef.current.components);
+      }
+    };
+    resetRotation.current = () => {
+      animator.startResetRotation();
+      if (callbacksRef.current) {
+        goToModelView("Front", callbacksRef.current.components);
+      }
+    };
 
     let handleClick: ((e: MouseEvent) => void) | null = null;
     if (modelLoaded && callbacksRef.current) {
-      logCameraOrientations(callbacksRef.current.components);
-
       handleClick = (event: MouseEvent) => {
-        if (anim.active) return;
+        if (animator.isActive) return;
         const face = selectViewCubeFace(event, camera, cube, container);
-        if (face) startRotation(face);
+        if (face) {
+          animator.startRotation(face);
+          goToModelView(face, callbacksRef.current!.components);
+        }
       };
       container.addEventListener("click", handleClick);
     }
 
     let lastTime = performance.now();
 
-    function animate() {
+    const animate = () => {
       requestAnimationFrame(animate);
 
       const now = performance.now();
       const delta = (now - lastTime) / 1000;
       lastTime = now;
 
-      if (anim.active) {
-        anim.progress += delta * ANIM_SPEED;
-        if (anim.progress >= 1) {
-          anim.progress = 1;
-          anim.active = false;
-          group.quaternion.copy(anim.targetQuat);
-          setCurrentFace(anim.targetFace);
-        } else {
-          group.quaternion.slerpQuaternions(anim.startQuat, anim.targetQuat, anim.progress);
-        }
-      }
-
+      animator.tick(delta);
       renderer.render(scene, camera);
-    }
+    };
 
     animate();
 
+    // Cleanup on unmount
     return () => {
       rotateTo.current = null;
       resetRotation.current = null;
