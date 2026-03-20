@@ -16,6 +16,7 @@ type MenuState = "idle" | "open" | "choose" | "selectIfc";
 
 function App() {
   const callbacksRef = useRef<ViewerCallbacks | null>(null);
+  const homeResetRef = useRef<(() => void) | null>(null);
 
   const [modelLoaded, setModelLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -184,8 +185,8 @@ function App() {
         </div>
       )}
 
-      <Home />
-      <ViewCube callbacksRef={callbacksRef} modelLoaded={modelLoaded} />
+      <Home onClick={() => homeResetRef.current?.()} />
+      <ViewCube callbacksRef={callbacksRef} modelLoaded={modelLoaded} homeResetRef={homeResetRef} />
       <ControlFooter />
       <CommandPallete />
     </div>

@@ -1,8 +1,13 @@
 import homeIcon from "../assets/home.svg";
 
-function Home() {
+type HomeProps = {
+  onClick?: () => void;
+};
+
+function Home({ onClick }: HomeProps) {
   return (
     <button
+      onClick={onClick}
       title="Home"
       aria-label="Home"
       className="absolute top-[calc(1rem+15%)] right-[calc(1rem+10%)] bg-transparent border-none opacity-60 hover:opacity-100 transition-opacity cursor-pointer p-0"

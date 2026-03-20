@@ -7,6 +7,7 @@ import type { ViewerCallbacks } from "../viewer/viewer";
 export type ViewCubeProps = {
   callbacksRef: React.RefObject<ViewerCallbacks | null>;
   modelLoaded: boolean;
+  homeResetRef?: React.RefObject<(() => void) | null>;
 };
 
 export type CubeFace = "Right" | "Left" | "Top" | "Bottom" | "Front" | "Back";

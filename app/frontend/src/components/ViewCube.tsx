@@ -84,6 +84,35 @@ async function goToModelView(face: CubeFace, components: OBC.Components) {
   );
 }
 
+async function goToHomeView(components: OBC.Components) {
+  const worlds = components.get(OBC.Worlds);
+  const world = worlds.list.values().next().value;
+  if (!world?.camera) return;
+
+  const boxer = components.get(OBC.BoundingBoxer);
+  boxer.addFromModels();
+
+  const [topOrient, rightOrient] = await Promise.all([
+    boxer.getCameraOrientation("top"),
+    boxer.getCameraOrientation("right"),
+  ]);
+  boxer.dispose();
+
+  const position = new THREE.Vector3()
+    .addVectors(topOrient.position, rightOrient.position)
+    .multiplyScalar(0.5);
+  const target = new THREE.Vector3()
+    .addVectors(topOrient.target, rightOrient.target)
+    .multiplyScalar(0.5);
+
+  const controls = (world.camera as OBC.OrthoPerspectiveCamera).controls;
+  await controls.setLookAt(
+    position.x, position.y, position.z,
+    target.x, target.y, target.z,
+    true,
+  );
+}
+
 const ANIM_SPEED = 3; // units per second — full rotation in ~0.33s
 
 function createCubeAnimator(
@@ -99,7 +128,7 @@ function createCubeAnimator(
     targetFace: null as CubeFace | null,
   };
 
-  function startRotation(face: CubeFace) {
+  const startRotation = (face: CubeFace) => {
     if (state.active) return;
     state.startQuat.copy(group.quaternion);
     state.targetQuat.copy(FACE_QUATERNIONS[face]);
@@ -109,7 +138,7 @@ function createCubeAnimator(
     onAnimationEnd(null); // hide arrows during animation
   }
 
-  function startResetRotation() {
+  const startResetRotation = () => {
     if (state.active) return;
     state.startQuat.copy(group.quaternion);
     state.targetQuat.copy(initialQuat);
@@ -119,7 +148,7 @@ function createCubeAnimator(
     onAnimationEnd(null);
   }
 
-  function tick(delta: number) {
+  const tick = (delta: number) => {
     if (!state.active) return;
     state.progress += delta * ANIM_SPEED;
     if (state.progress >= 1) {
@@ -144,7 +173,7 @@ function createCubeAnimator(
   };
 }
 
-function ViewCube({ callbacksRef, modelLoaded }: ViewCubeProps) {
+function ViewCube({ callbacksRef, modelLoaded, homeResetRef }: ViewCubeProps) {
   const viewCubeContainer = React.useRef<HTMLDivElement>(null);
   const [currentFace, setCurrentFace] = useState<CubeFace | null>(null);
 
@@ -216,9 +245,12 @@ function ViewCube({ callbacksRef, modelLoaded }: ViewCubeProps) {
     resetRotation.current = () => {
       animator.startResetRotation();
       if (callbacksRef.current) {
-        goToModelView("Front", callbacksRef.current.components);
+        goToHomeView(callbacksRef.current.components);
       }
     };
+    if (homeResetRef) {
+      homeResetRef.current = resetRotation.current;
+    }
 
     let handleClick: ((e: MouseEvent) => void) | null = null;
     if (modelLoaded && callbacksRef.current) {
@@ -252,6 +284,7 @@ function ViewCube({ callbacksRef, modelLoaded }: ViewCubeProps) {
     return () => {
       rotateTo.current = null;
       resetRotation.current = null;
+      if (homeResetRef) homeResetRef.current = null;
       if (handleClick) container.removeEventListener("click", handleClick);
       renderer.dispose();
       container.removeChild(renderer.domElement);
