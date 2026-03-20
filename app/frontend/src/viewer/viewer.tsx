@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { useThemeStore, LIGHT_BG, DARK_BG } from "../store/themeStore";
 import { orbit } from "./controls";
 
-
 // Fragments are That Open Engine own custom file type .frag. That Open Engine does not directly
 // support IFC files so first it converts the file to a .frag file.
 //
