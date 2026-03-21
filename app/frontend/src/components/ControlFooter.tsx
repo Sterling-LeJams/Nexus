@@ -1,3 +1,4 @@
+import { useViewerStore } from "../store/viewerStore";
 import CameraSvg from "../assets/camera-outlined-svgrepo-com.svg";
 import CutSvg from "../assets/cut-svgrepo-com.svg";
 import HandSvg from "../assets/hand-svgrepo-com.svg";
@@ -29,6 +30,19 @@ const sections = [
 ];
 
 function ControlFooter() {
+  const { activeTool, setActiveTool } = useViewerStore();
+
+  const handleClick = (label: string) => {
+    if (label === "Section Cut") {
+      setActiveTool(activeTool === "sectionCut" ? null : "sectionCut");
+    }
+  };
+
+  const isActive = (label: string) => {
+    if (label === "Section Cut") return activeTool === "sectionCut";
+    return false;
+  };
+
   return (
     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
       <div
@@ -45,7 +59,10 @@ function ControlFooter() {
                 <button
                   key={iconIdx}
                   title={label}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/50 transition-colors cursor-pointer"
+                  onClick={() => handleClick(label)}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/50 transition-colors cursor-pointer ${
+                    isActive(label) ? "bg-white/20 ring-2 ring-blue-500" : ""
+                  }`}
                 >
                   <img src={icon} alt={label} className="w-5 h-5" />
                 </button>

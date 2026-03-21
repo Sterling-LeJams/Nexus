@@ -2,88 +2,9 @@ import * as OBC from "@thatopen/components";
 import * as THREE from "three";
 import { useEffect, useRef } from "react";
 import { useThemeStore, LIGHT_BG, DARK_BG } from "../store/themeStore";
-import { orbit } from "./controls";
-
-// Fragments are That Open Engine own custom file type .frag. That Open Engine does not directly
-// support IFC files so first it converts the file to a .frag file.
-//
-//
-// Components are the building blocks of That Open Engine. They consists of two things
-//    - Global Availability
-//    - Lifecycle Management
-// ---
-//   That Open Engine Project Structure
-//
-//   TOE is built around three core abstractions:
-//
-// 1. Components — the Service Locator / IoC Container
-//
-// const components = new OBC.Components();
-//   The root object.Every TOE system is registered here and retrieved via components.get(SomeClass).It
-//   handles lifecycle(init / dispose) for all registered components.
-//
-//   2. World — Scene + Camera + Renderer bound together
-//
-// const world = worlds.create<SimpleScene, SimpleCamera, SimpleRenderer>();
-// world.scene = new OBC.SimpleScene(components);
-// world.renderer = new OBC.SimpleRenderer(components, container);
-// world.camera = new OBC.OrthoPerspectiveCamera(components);
-// components.init(); // starts the render loop
-//   A World is the Three.js rendering context.You need all three(scene, renderer, camera) before calling
-// components.init(), which starts the animation / render loop.
-//
-//   3. FragmentsManager — the model system
-//
-// const fragments = components.get(OBC.FragmentsManager);
-// fragments.init(workerUrl); // spawns a Web Worker for off-thread parsing
-//   TOE's native format is .frag (Fragments), not IFC directly. The FragmentsManager runs in a Web Worker
-//   to avoid blocking the main thread.
-//
-//   4. IfcLoader — IFC → Fragments conversion
-//
-// const ifcLoader = components.get(OBC.IfcLoader);
-// await ifcLoader.setup({ wasm: { path: "...", absolute: true } });
-// await ifcLoader.load(buffer, false, "example", { ... });
-// web - ifc is a WASM library that parses IFC.IfcLoader wraps it: you feed it a Uint8Array of an IFC file
-//    and it converts it to a Fragment model, which then fires fragments.list.onItemSet.
-//
-//   5. Event - driven model loading
-//
-// fragments.list.onItemSet.add(({ value: model }) => {
-//   model.useCamera(world.camera.three);   // LOD system needs the camera
-//   world.scene.three.add(model.object);   // add Three.js mesh to scene
-//   fragments.core.update(true);           // force re-render
-// });
-//   Once conversion is done, the Fragment model is added to the scene here reactively.
-//
-//   ---
-//   Data Flow Summary
-//
-//   IFC file(URL)
-//     → fetch → Uint8Array
-//       → IfcLoader.load()[WASM parsing via web - ifc]
-//         → FragmentsManager produces a Fragment model
-//           → onItemSet fires → model added to Three.js scene
-//             → render loop(started by components.init()) draws it
-//
-// ---
-//   Key Insight: Why Fragments ?
-//
-//     IFC files are huge and complex.TOE pre - processes them into.frag(a compact binary format optimized
-//   for rendering + instancing).Once you have a.frag file, subsequent loads skip the expensive WASM
-//   parsing step entirely — which is what downloadFragments enables: cache the converted model locally.
-//
-
-export type ViewerCallbacks = {
-  loadIfc: (source: string | File) => Promise<void>;
-  downloadFragments: () => Promise<void>;
-  components: OBC.Components;
-};
-
-type Props = {
-  onInit: (callbacks: ViewerCallbacks) => void;
-  onModelLoaded: () => void;
-};
+import { orbit, sectionCut } from "./controls";
+import { useViewerStore } from "../store/viewerStore";
+import type { Props } from "./types";
 
 function InitViewer({ onInit, onModelLoaded }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,6 +13,9 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
     let disposed = false;
     let cleanupOrbit: (() => void) | null = null;
     let cleanupTheme: (() => void) | null = null;
+    let cleanupStoreSub: (() => void) | null = null;
+    let cleanupEscape: (() => void) | null = null;
+    let sectionCutRef: ReturnType<typeof sectionCut> | null = null;
     let componentsRef: OBC.Components | null = null;
     let workerBlobUrl: string | null = null;
 
@@ -131,6 +55,28 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
         isDark,
       });
       cleanupOrbit = orbitControls.cleanup;
+
+      // --- Section Cut tool ---
+      const sc = sectionCut({ world, components, container });
+      sectionCutRef = sc;
+
+      // Subscribe to viewerStore to activate/deactivate section cut
+      cleanupStoreSub = useViewerStore.subscribe((state) => {
+        if (state.activeTool === "sectionCut") {
+          sc.activate();
+        } else {
+          sc.deactivate();
+        }
+      });
+
+      // Escape key deactivates the active tool
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          useViewerStore.getState().setActiveTool(null);
+        }
+      };
+      window.addEventListener("keydown", onKeyDown);
+      cleanupEscape = () => window.removeEventListener("keydown", onKeyDown);
 
       const updateTheme = (dark: boolean) => {
         world.scene.three.background = new THREE.Color(
@@ -227,7 +173,12 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
         URL.revokeObjectURL(link.href);
       };
 
-      onInit({ loadIfc, downloadFragments, components });
+      onInit({
+        loadIfc,
+        downloadFragments,
+        cutAtElevation: sc.cutAtElevation,
+        components,
+      });
     };
 
     init();
@@ -236,6 +187,9 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
       disposed = true;
       cleanupOrbit?.();
       cleanupTheme?.();
+      cleanupStoreSub?.();
+      cleanupEscape?.();
+      if (sectionCutRef) sectionCutRef.deactivate();
       if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl);
       componentsRef?.dispose();
     };

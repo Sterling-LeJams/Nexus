@@ -2,7 +2,7 @@
 
 import React from "react";
 import * as THREE from "three";
-import type { ViewerCallbacks } from "../viewer/viewer";
+import type { ViewerCallbacks } from "../viewer";
 
 export type ViewCubeProps = {
   callbacksRef: React.RefObject<ViewerCallbacks | null>;
