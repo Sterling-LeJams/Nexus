@@ -34,6 +34,11 @@ Nexus/
 - **Client-side IFC parsing** — IFC files are parsed in the browser via web-ifc/That Open Engine; backend is thin
 - **Thin backend** — Rust API handles auth relay, project metadata, and file storage pointers; no server-side IFC processing
 
+## Code Style
+- **Arrow functions for nested functions** — never use `function` declarations inside another function; always use `const fn = () => { ... }` instead (makes scope obvious, no hoisting surprises)
+- **No `any` in TypeScript** — always use proper types or `unknown`; never use `any`
+- **File search permissions** — no need to ask for permission to read or search files/folders within the project directory; always ask before web searches or accessing paths outside the project
+
 ## Dev Commands
 ```bash
 # Frontend
