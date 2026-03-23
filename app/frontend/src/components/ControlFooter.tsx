@@ -1,5 +1,5 @@
 import { useViewerStore } from "../store/viewerStore";
-import CameraSvg from "../assets/camera-outlined-svgrepo-com.svg";
+import CameraToggle from "./CameraToggle";
 import CutSvg from "../assets/cut-svgrepo-com.svg";
 import HandSvg from "../assets/hand-svgrepo-com.svg";
 import LevelsSvg from "../assets/levels.svg";
@@ -12,7 +12,7 @@ import NodeSvg from "../assets/node-svgrepo-com.svg";
 
 const sections = [
   [
-    { icon: CameraSvg, label: "Camera" },
+    { icon: null, label: "Camera" },
     { icon: CutSvg, label: "Section Cut" },
     { icon: HandSvg, label: "Pan" },
     { icon: LevelsSvg, label: "Levels" },
@@ -30,16 +30,19 @@ const sections = [
 ];
 
 function ControlFooter() {
-  const { activeTool, setActiveTool } = useViewerStore();
+  const { activeTool, setActiveTool, levelsOpen, setLevelsOpen } = useViewerStore();
 
   const handleClick = (label: string) => {
     if (label === "Section Cut") {
       setActiveTool(activeTool === "sectionCut" ? null : "sectionCut");
+    } else if (label === "Levels") {
+      setLevelsOpen(!levelsOpen);
     }
   };
 
   const isActive = (label: string) => {
     if (label === "Section Cut") return activeTool === "sectionCut";
+    if (label === "Levels") return levelsOpen;
     return false;
   };
 
@@ -55,18 +58,22 @@ function ControlFooter() {
               <div className="w-px h-6 bg-gray-400 mx-2" />
             )}
             <div className="flex items-center gap-1">
-              {items.map(({ icon, label }, iconIdx) => (
-                <button
-                  key={iconIdx}
-                  title={label}
-                  onClick={() => handleClick(label)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/50 transition-colors cursor-pointer ${
-                    isActive(label) ? "bg-white/20 ring-2 ring-blue-500" : ""
-                  }`}
-                >
-                  <img src={icon} alt={label} className="w-5 h-5" />
-                </button>
-              ))}
+              {items.map(({ icon, label }, iconIdx) =>
+                label === "Camera" ? (
+                  <CameraToggle key={iconIdx} />
+                ) : (
+                  <button
+                    key={iconIdx}
+                    title={label}
+                    onClick={() => handleClick(label)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/50 transition-colors cursor-pointer ${
+                      isActive(label) ? "bg-white/20 ring-2 ring-blue-500" : ""
+                    }`}
+                  >
+                    <img src={icon ?? undefined} alt={label} className="w-5 h-5" />
+                  </button>
+                )
+              )}
             </div>
           </div>
         ))}

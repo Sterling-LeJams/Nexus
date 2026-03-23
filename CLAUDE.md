@@ -38,6 +38,7 @@ Nexus/
 - **Arrow functions for nested functions** — never use `function` declarations inside another function; always use `const fn = () => { ... }` instead (makes scope obvious, no hoisting surprises)
 - **No `any` in TypeScript** — always use proper types or `unknown`; never use `any`
 - **File search permissions** — no need to ask for permission to read or search files/folders within the project directory; always ask before web searches or accessing paths outside the project
+- **Build/type-check permissions** — do not ask for permission to run `npm run build` or `npx tsc` when checking if changes build correctly
 - **Types in dedicated files** — all TypeScript types/interfaces must live in a `types.ts` file in the same directory as the code that uses them, not inline in implementation files. If no `types.ts` exists for the directory, ask the user for permission to create one and where to place it
 - **Section comment blocks for grouped code** — when a group of functions, classes, or types are logically related (e.g. all serve a single feature), place a comment block header above them:
   ```

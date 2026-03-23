@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useThemeStore, LIGHT_BG, DARK_BG } from "../store/themeStore";
 import { orbit, sectionCut } from "./controls";
 import { useViewerStore } from "../store/viewerStore";
+import { queryLevels } from "../query";
 import type { Props } from "./types";
 
 function InitViewer({ onInit, onModelLoaded }: Props) {
@@ -14,6 +15,7 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
     let cleanupOrbit: (() => void) | null = null;
     let cleanupTheme: (() => void) | null = null;
     let cleanupStoreSub: (() => void) | null = null;
+    let cleanupCameraMode: (() => void) | null = null;
     let cleanupEscape: (() => void) | null = null;
     let sectionCutRef: ReturnType<typeof sectionCut> | null = null;
     let componentsRef: OBC.Components | null = null;
@@ -43,6 +45,16 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
       world.camera = new OBC.OrthoPerspectiveCamera(components);
 
       components.init();
+
+      // --- Camera Projection ---
+      const camera = world.camera as OBC.OrthoPerspectiveCamera;
+      camera.projection.set("Perspective");
+
+      cleanupCameraMode = useViewerStore.subscribe((state) => {
+        camera.projection.set(
+          state.cameraMode === "ortho" ? "Orthographic" : "Perspective",
+        );
+      });
 
       // --- Click-to-Orbit Pivot with Pulsating Orb ---
       const fragments = components.get(OBC.FragmentsManager);
@@ -155,9 +167,15 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
           const data = await source.arrayBuffer();
           buffer = new Uint8Array(data);
         }
-        await ifcLoader.load(buffer, false, "example", {
-          processData: {},
-        });
+        // Phase 1: open model in ifcLoader.webIfc to query levels
+        const modelId = await ifcLoader.readIfcFile(buffer);
+        const capturedLevels = queryLevels(ifcLoader.webIfc, modelId);
+        ifcLoader.cleanUp();
+
+        // Phase 2: load as fragments (uses its own internal IfcAPI)
+        await ifcLoader.load(buffer, false, "example", { processData: {} });
+
+        useViewerStore.getState().setLevels(capturedLevels);
       };
 
       const downloadFragments = async () => {
@@ -188,6 +206,7 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
       cleanupOrbit?.();
       cleanupTheme?.();
       cleanupStoreSub?.();
+      cleanupCameraMode?.();
       cleanupEscape?.();
       if (sectionCutRef) sectionCutRef.deactivate();
       if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl);

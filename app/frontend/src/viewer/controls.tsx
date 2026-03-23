@@ -175,7 +175,8 @@ export function sectionCut({
         : rawNormal.clone().setY(0).normalize();
 
     clipper.deleteAll();
-    clipper.createFromNormalAndCoplanarPoint(world, snappedNormal, hit.point);
+    const id = clipper.createFromNormalAndCoplanarPoint(world, snappedNormal, hit.point);
+    clipper.list.get(id)?.controls.setSize(0.3);
   };
 
   const activate = () => {
@@ -201,11 +202,12 @@ export function sectionCut({
   const cutAtElevation = (elevation: number) => {
     clipper.enabled = true;
     clipper.deleteAll();
-    clipper.createFromNormalAndCoplanarPoint(
+    const id = clipper.createFromNormalAndCoplanarPoint(
       world,
       new THREE.Vector3(0, 1, 0),
       new THREE.Vector3(0, elevation, 0),
     );
+    clipper.list.get(id)?.controls.setSize(0.3);
   };
 
   return { activate, deactivate, cutAtElevation };

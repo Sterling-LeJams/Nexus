@@ -9,6 +9,7 @@ import Home from "./components/Home";
 import Button from "./components/Button";
 import ViewCube from "./components/ViewCube";
 import ControlFooter from "./components/ControlFooter";
+import LevelsPanel from "./components/LevelsPanel";
 
 BUI.Manager.init();
 
@@ -187,6 +188,7 @@ function App() {
 
       <Home onClick={() => homeResetRef.current?.()} />
       <ViewCube callbacksRef={callbacksRef} modelLoaded={modelLoaded} homeResetRef={homeResetRef} />
+      <LevelsPanel callbacksRef={callbacksRef} />
       <ControlFooter />
       <CommandPallete />
     </div>
