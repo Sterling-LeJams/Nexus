@@ -73,7 +73,9 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
       sectionCutRef = sc;
 
       // Subscribe to viewerStore to activate/deactivate section cut
-      cleanupStoreSub = useViewerStore.subscribe((state) => {
+      // Only react when activeTool actually changes — not on every store update
+      cleanupStoreSub = useViewerStore.subscribe((state, prevState) => {
+        if (state.activeTool === prevState.activeTool) return;
         if (state.activeTool === "sectionCut") {
           sc.activate();
         } else {
@@ -167,15 +169,14 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
           const data = await source.arrayBuffer();
           buffer = new Uint8Array(data);
         }
-        // Phase 1: open model in ifcLoader.webIfc to query levels
-        const modelId = await ifcLoader.readIfcFile(buffer);
-        const capturedLevels = queryLevels(ifcLoader.webIfc, modelId);
-        ifcLoader.cleanUp();
-
-        // Phase 2: load as fragments (uses its own internal IfcAPI)
         await ifcLoader.load(buffer, false, "example", { processData: {} });
 
-        useViewerStore.getState().setLevels(capturedLevels);
+        // Query levels from loaded model (world-space elevations)
+        const [model] = fragments.list.values();
+        if (model) {
+          const levels = await queryLevels(model);
+          useViewerStore.getState().setLevels(levels);
+        }
       };
 
       const downloadFragments = async () => {

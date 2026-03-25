@@ -297,25 +297,6 @@ function ViewCube({ callbacksRef, modelLoaded, homeResetRef }: ViewCubeProps) {
       id="view-cube"
       className="absolute top-[calc(1rem+15%)] right-10 w-42 h-42"
     >
-      {currentFace && (
-        <div
-          title="Reset view"
-          style={{
-            position: "absolute",
-            top: 18,
-            right: 18,
-            width: 10,
-            height: 10,
-            borderRadius: "50%",
-            backgroundColor: "#555",
-            cursor: "pointer",
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            resetRotation.current?.();
-          }}
-        />
-      )}
       {currentFace &&
         (["up", "down", "left", "right"] as ArrowDirection[]).map((dir) => (
           <div

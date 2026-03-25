@@ -200,14 +200,18 @@ export function sectionCut({
   };
 
   const cutAtElevation = (elevation: number) => {
-    clipper.enabled = true;
+    // Cycle enabled false→true so OBC re-applies clipping state to the renderer
+    // even when a cut was already active (enabled=true is otherwise a no-op)
+    clipper.enabled = false;
     clipper.deleteAll();
+    // Normal (0, -1, 0) clips geometry where y > elevation, hiding everything above
     const id = clipper.createFromNormalAndCoplanarPoint(
       world,
-      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, -1, 0),
       new THREE.Vector3(0, elevation, 0),
     );
     clipper.list.get(id)?.controls.setSize(0.3);
+    clipper.enabled = true;
   };
 
   return { activate, deactivate, cutAtElevation };

@@ -33,10 +33,17 @@ function LevelsPanel({ callbacksRef }: LevelsPanelProps) {
     const idx = sortedLevels.findIndex((l) => l.name === levelName);
     if (idx === -1) return;
 
-    // Cut just below the level above the selected one
+    // Cut just below the level above: offset ~5 feet (1.5m) below its floor elevation
+    // For the topmost level, cut a default storey height (~4m) above its own elevation
+    const OFFSET_M = 1.5;
+    const DEFAULT_STOREY_HEIGHT = 4;
     const levelAbove = sortedLevels[idx + 1];
-    if (levelAbove && callbacksRef.current) {
-      callbacksRef.current.cutAtElevation(levelAbove.elevation);
+    const cutElevation = levelAbove
+      ? levelAbove.elevation - OFFSET_M
+      : sortedLevels[idx].elevation + DEFAULT_STOREY_HEIGHT;
+
+    if (callbacksRef.current) {
+      callbacksRef.current.cutAtElevation(cutElevation);
     }
   };
 
@@ -75,16 +82,15 @@ function LevelsPanel({ callbacksRef }: LevelsPanelProps) {
             </p>
           ) : (
             [...levels]
-              .sort((a, b) => b.elevation - a.elevation)
+              .sort((a, b) => a.elevation - b.elevation)
               .map((level) => (
                 <button
                   key={level.name}
                   onClick={() => handleLevelClick(level.name)}
-                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors cursor-pointer ${
-                    selectedLevel === level.name
+                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors cursor-pointer ${selectedLevel === level.name
                       ? "bg-blue-500/20 text-blue-800 ring-1 ring-blue-400"
                       : "text-gray-700 hover:bg-white/60"
-                  }`}
+                    }`}
                 >
                   <span className="font-medium">{level.name}</span>
                   <span className="ml-2 text-xs text-gray-400">
