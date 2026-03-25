@@ -1,6 +1,6 @@
-import { useCallback, useEffect, RefObject } from 'react';
+import { useCallback } from 'react';
 import { usePanelStore } from './panelStore';
-import { PanelId, PanelRect } from './types';
+import type { PanelId, PanelRect } from './types';
 import { snapRect, resolveCollisions } from './snap';
 
 // --------------------------------
@@ -8,19 +8,15 @@ import { snapRect, resolveCollisions } from './snap';
 // --------------------------------
 
 /**
- * Attaches pointer-based drag behavior to a handle element.
- * Reads live panel state from the store during each move event,
- * applies snap + collision resolution, then writes back.
+ * Returns a pointerdown handler to attach directly to the drag-handle element.
+ * Avoids ref/useEffect timing issues by using React synthetic events instead.
  */
-export const useDraggable = (
-  id: PanelId,
-  handleRef: RefObject<HTMLElement | null>,
-): void => {
+export const useDraggable = (id: PanelId) => {
   const updatePanel = usePanelStore((s) => s.updatePanel);
   const bringToFront = usePanelStore((s) => s.bringToFront);
 
-  const onPointerDown = useCallback(
-    (e: PointerEvent) => {
+  return useCallback(
+    (e: React.PointerEvent) => {
       if (e.button !== 0) return;
       e.preventDefault();
 
@@ -66,11 +62,4 @@ export const useDraggable = (
     },
     [id, updatePanel, bringToFront],
   );
-
-  useEffect(() => {
-    const handle = handleRef.current;
-    if (!handle) return;
-    handle.addEventListener('pointerdown', onPointerDown);
-    return () => handle.removeEventListener('pointerdown', onPointerDown);
-  }, [handleRef, onPointerDown]);
 };

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { PanelId, PanelState, PanelStoreState } from './types';
+import type { PanelId, PanelState, PanelStoreState } from './types';
 
 // --------------------------------
 // --- Panel Store ---

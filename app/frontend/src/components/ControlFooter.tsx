@@ -1,4 +1,6 @@
 import { useViewerStore } from "../store/viewerStore";
+import { usePanelStore } from "./panels/panelStore";
+import { LEVELS_PANEL_ID } from "./LevelsPanel";
 import CameraToggle from "./CameraToggle";
 import CutSvg from "../assets/cut-svgrepo-com.svg";
 import HandSvg from "../assets/hand-svgrepo-com.svg";
@@ -30,19 +32,22 @@ const sections = [
 ];
 
 function ControlFooter() {
-  const { activeTool, setActiveTool, levelsOpen, setLevelsOpen } = useViewerStore();
+  const { activeTool, setActiveTool } = useViewerStore();
+  const levelsVisible = usePanelStore(
+    (s) => s.panels[LEVELS_PANEL_ID]?.visible ?? false,
+  );
 
   const handleClick = (label: string) => {
     if (label === "Section Cut") {
       setActiveTool(activeTool === "sectionCut" ? null : "sectionCut");
     } else if (label === "Levels") {
-      setLevelsOpen(!levelsOpen);
+      usePanelStore.getState().setVisible(LEVELS_PANEL_ID, !levelsVisible);
     }
   };
 
   const isActive = (label: string) => {
     if (label === "Section Cut") return activeTool === "sectionCut";
-    if (label === "Levels") return levelsOpen;
+    if (label === "Levels") return levelsVisible;
     return false;
   };
 

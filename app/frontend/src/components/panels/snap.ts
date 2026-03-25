@@ -1,4 +1,4 @@
-import { PanelRect } from './types';
+import type { PanelRect } from './types';
 
 // --------------------------------
 // --- Snap & Collision Logic ---

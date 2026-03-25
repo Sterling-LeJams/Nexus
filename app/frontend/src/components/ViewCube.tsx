@@ -84,11 +84,13 @@ async function goToModelView(face: CubeFace, components: OBC.Components) {
   );
 }
 
-async function goToHomeView(components: OBC.Components) {
-  const worlds = components.get(OBC.Worlds);
-  const world = worlds.list.values().next().value;
-  if (!world?.camera) return;
+// --------------------------------
+// --- Home View Cache ---
+// --------------------------------
+let cachedHomePosition: THREE.Vector3 | null = null;
+let cachedHomeTarget: THREE.Vector3 | null = null;
 
+async function computeAndCacheHomeView(components: OBC.Components) {
   const boxer = components.get(OBC.BoundingBoxer);
   boxer.addFromModels();
 
@@ -98,17 +100,32 @@ async function goToHomeView(components: OBC.Components) {
   ]);
   boxer.dispose();
 
-  const position = new THREE.Vector3()
+  cachedHomePosition = new THREE.Vector3()
     .addVectors(topOrient.position, rightOrient.position)
     .multiplyScalar(0.5);
-  const target = new THREE.Vector3()
+  cachedHomeTarget = new THREE.Vector3()
     .addVectors(topOrient.target, rightOrient.target)
     .multiplyScalar(0.5);
+}
+
+async function goToHomeView(components: OBC.Components) {
+  const worlds = components.get(OBC.Worlds);
+  const world = worlds.list.values().next().value;
+  if (!world?.camera) return;
+
+  if (!cachedHomePosition || !cachedHomeTarget) {
+    await computeAndCacheHomeView(components);
+  }
 
   const controls = (world.camera as OBC.OrthoPerspectiveCamera).controls;
+  controls.setOrbitPoint(
+    cachedHomeTarget!.x,
+    cachedHomeTarget!.y,
+    cachedHomeTarget!.z,
+  );
   await controls.setLookAt(
-    position.x, position.y, position.z,
-    target.x, target.y, target.z,
+    cachedHomePosition!.x, cachedHomePosition!.y, cachedHomePosition!.z,
+    cachedHomeTarget!.x, cachedHomeTarget!.y, cachedHomeTarget!.z,
     true,
   );
 }
@@ -136,7 +153,7 @@ function createCubeAnimator(
     state.targetFace = face;
     state.active = true;
     onAnimationEnd(null); // hide arrows during animation
-  }
+  };
 
   const startResetRotation = () => {
     if (state.active) return;
@@ -146,7 +163,7 @@ function createCubeAnimator(
     state.targetFace = null;
     state.active = true;
     onAnimationEnd(null);
-  }
+  };
 
   const tick = (delta: number) => {
     if (!state.active) return;
@@ -163,10 +180,12 @@ function createCubeAnimator(
         state.progress,
       );
     }
-  }
+  };
 
   return {
-    get isActive() { return state.active; },
+    get isActive() {
+      return state.active;
+    },
     startRotation,
     startResetRotation,
     tick,
@@ -226,6 +245,21 @@ function ViewCube({ callbacksRef, modelLoaded, homeResetRef }: ViewCubeProps) {
     const wireframe = new THREE.LineSegments(edges, lineMaterial);
     group.add(wireframe);
 
+    // Hover highlight — 70% of face size, transparent blue
+    const highlightSize = 2.25 * 0.7;
+    const highlightGeo = new THREE.PlaneGeometry(highlightSize, highlightSize);
+    const highlightMat = new THREE.MeshBasicMaterial({
+      color: 0x78bbf5,
+      transparent: true,
+      opacity: 0.45,
+      side: THREE.DoubleSide,
+      depthTest: false,
+    });
+    const highlightMesh = new THREE.Mesh(highlightGeo, highlightMat);
+    highlightMesh.visible = false;
+    highlightMesh.renderOrder = 1;
+    group.add(highlightMesh);
+
     // Start with isometric-ish view
     group.rotation.x = Math.PI / 6;
     group.rotation.y = Math.PI / 4;
@@ -234,6 +268,13 @@ function ViewCube({ callbacksRef, modelLoaded, homeResetRef }: ViewCubeProps) {
     camera.position.z = 5;
 
     const animator = createCubeAnimator(group, initialQuat, setCurrentFace);
+
+    // Eagerly compute and cache home view before any user interaction
+    if (modelLoaded && callbacksRef.current) {
+      cachedHomePosition = null;
+      cachedHomeTarget = null;
+      computeAndCacheHomeView(callbacksRef.current.components);
+    }
 
     // Expose to arrow/reset click handlers
     rotateTo.current = (face: CubeFace) => {
@@ -251,6 +292,43 @@ function ViewCube({ callbacksRef, modelLoaded, homeResetRef }: ViewCubeProps) {
     if (homeResetRef) {
       homeResetRef.current = resetRotation.current;
     }
+
+    // --------------------------------
+    // --- Hover highlight logic ---
+    // --------------------------------
+    const hoverRaycaster = new THREE.Raycaster();
+    const hoverMouse = new THREE.Vector2();
+    const HALF_CUBE = 2.25 / 2 + 0.01; // slight offset so highlight sits above face
+    const _planeDefault = new THREE.Vector3(0, 0, 1);
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const rect = container.getBoundingClientRect();
+      hoverMouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      hoverMouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      hoverRaycaster.setFromCamera(hoverMouse, camera);
+      const hits = hoverRaycaster.intersectObject(cube);
+
+      if (hits.length > 0 && hits[0].face) {
+        const normal = hits[0].face.normal;
+        highlightMesh.position.set(
+          normal.x * HALF_CUBE,
+          normal.y * HALF_CUBE,
+          normal.z * HALF_CUBE,
+        );
+        highlightMesh.quaternion.setFromUnitVectors(_planeDefault, normal);
+        highlightMesh.visible = true;
+      } else {
+        highlightMesh.visible = false;
+      }
+    };
+
+    const handleMouseLeave = () => {
+      highlightMesh.visible = false;
+    };
+
+    container.addEventListener("mousemove", handleMouseMove);
+    container.addEventListener("mouseleave", handleMouseLeave);
 
     let handleClick: ((e: MouseEvent) => void) | null = null;
     if (modelLoaded && callbacksRef.current) {
@@ -286,6 +364,8 @@ function ViewCube({ callbacksRef, modelLoaded, homeResetRef }: ViewCubeProps) {
       resetRotation.current = null;
       if (homeResetRef) homeResetRef.current = null;
       if (handleClick) container.removeEventListener("click", handleClick);
+      container.removeEventListener("mousemove", handleMouseMove);
+      container.removeEventListener("mouseleave", handleMouseLeave);
       renderer.dispose();
       container.removeChild(renderer.domElement);
     };

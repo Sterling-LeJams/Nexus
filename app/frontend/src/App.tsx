@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import * as BUI from "@thatopen/ui";
 import InitViewer, { type ViewerCallbacks } from "./viewer";
-import { defaultIfcExample } from "./types";
 import { useThemeStore } from "./store/themeStore";
+import { usePanelStore } from "./components/panels/panelStore";
 import hamburgerIcon from "./assets/hamburger.svg";
 import CommandPallete from "./components/CommandPallete";
 import Home from "./components/Home";
@@ -10,37 +10,22 @@ import Button from "./components/Button";
 import ViewCube from "./components/ViewCube";
 import ControlFooter from "./components/ControlFooter";
 import LevelsPanel from "./components/LevelsPanel";
+import MenuPanel, { MENU_PANEL_ID } from "./components/MenuPanel";
 
 BUI.Manager.init();
-
-type MenuState = "idle" | "open" | "choose" | "selectIfc";
 
 function App() {
   const callbacksRef = useRef<ViewerCallbacks | null>(null);
   const homeResetRef = useRef<(() => void) | null>(null);
 
   const [modelLoaded, setModelLoaded] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [menu, setMenu] = useState<MenuState>("idle");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
 
-  const handleFileUpload = async (
-    source?: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    if (!callbacksRef.current) return;
-    const input = source
-      ? source.target.files?.[0]
-      : defaultIfcExample.filePath;
-    if (!input) return;
-    setMenu("idle");
-    setLoading(true);
-    await callbacksRef.current.loadIfc(input);
-    setLoading(false);
+  const toggleMenu = () => {
+    const { panels, setVisible } = usePanelStore.getState();
+    setVisible(MENU_PANEL_ID, !panels[MENU_PANEL_ID]?.visible);
   };
-
-  const menuOpen = menu !== "idle";
 
   return (
     <div className="relative flex items-center justify-center w-screen h-screen">
@@ -51,69 +36,11 @@ function App() {
         onModelLoaded={() => setModelLoaded(true)}
       />
 
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".ifc"
-        className="hidden"
-        onChange={handleFileUpload}
-      />
-
-      {/* Hamburger menu */}
-      <div className="absolute top-4 left-4 flex flex-col gap-2">
-        <Button onClick={() => setMenu(menuOpen ? "idle" : "open")}>
+      {/* Hamburger trigger */}
+      <div className="absolute top-4 left-4">
+        <Button onClick={toggleMenu}>
           <img src={hamburgerIcon} alt="Menu" className="w-5 h-5" />
         </Button>
-
-        {menuOpen && (
-          <div className="w-56 rounded-xl bg-white/50 backdrop-blur-sm shadow-lg">
-            <div className="px-4 py-3 flex flex-col gap-2">
-              {loading ? (
-                <p className="text-sm text-gray-700">
-                  Conversion in progress...
-                </p>
-              ) : menu === "open" ? (
-                !modelLoaded ? (
-                  <button
-                    onClick={() => setMenu("choose")}
-                    className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors"
-                  >
-                    Load Model
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => callbacksRef.current?.downloadFragments()}
-                    className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-medium text-white transition-colors"
-                  >
-                    Download Fragments
-                  </button>
-                )
-              ) : menu === "choose" ? (
-                <>
-                  <button
-                    onClick={() => handleFileUpload()}
-                    className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors"
-                  >
-                    Load Example IFC
-                  </button>
-                  <button
-                    onClick={() => setMenu("selectIfc")}
-                    className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-2 text-sm font-medium text-white transition-colors"
-                  >
-                    Select IFC
-                  </button>
-                  <button
-                    onClick={() => setMenu("open")}
-                    className="text-xs text-gray-400 hover:text-gray-300 transition-colors mt-1"
-                  >
-                    Back
-                  </button>
-                </>
-              ) : null}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Theme toggle */}
@@ -151,44 +78,14 @@ function App() {
         )}
       </Button>
 
-      {/* Select IFC modal */}
-      {menu === "selectIfc" && (
-        <div className="absolute inset-0 flex items-center justify-center z-50">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMenu("choose")}
-          />
-          <div className="relative w-80 rounded-xl bg-gray-900/90 backdrop-blur-sm border border-white/10 shadow-xl text-white">
-            <div className="px-4 py-3 border-b border-white/10">
-              <p className="text-sm font-medium">Select IFC Source</p>
-            </div>
-            <div className="px-4 py-3 flex flex-col gap-2">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-medium transition-colors"
-              >
-                Upload from Device
-              </button>
-              <button
-                disabled
-                className="w-full rounded-lg bg-gray-700 px-3 py-2 text-sm font-medium text-gray-400 cursor-not-allowed"
-              >
-                Select from Autodesk Construction Cloud
-              </button>
-              <button
-                onClick={() => setMenu("choose")}
-                className="text-xs text-gray-400 hover:text-gray-300 transition-colors mt-1"
-              >
-                Back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <Home onClick={() => homeResetRef.current?.()} />
       <ViewCube callbacksRef={callbacksRef} modelLoaded={modelLoaded} homeResetRef={homeResetRef} />
       <LevelsPanel callbacksRef={callbacksRef} />
+      <MenuPanel
+        callbacksRef={callbacksRef}
+        modelLoaded={modelLoaded}
+        onModelLoad={() => setModelLoaded(true)}
+      />
       <ControlFooter />
       <CommandPallete />
     </div>
