@@ -73,6 +73,11 @@ async function goToModelView(face: CubeFace, components: OBC.Components) {
   boxer.dispose();
 
   const controls = (world.camera as OBC.OrthoPerspectiveCamera).controls;
+  controls.setOrbitPoint(
+    orientation.target.x,
+    orientation.target.y,
+    orientation.target.z,
+  );
   await controls.setLookAt(
     orientation.position.x,
     orientation.position.y,
@@ -85,49 +90,25 @@ async function goToModelView(face: CubeFace, components: OBC.Components) {
 }
 
 // --------------------------------
-// --- Home View Cache ---
+// --- Home View ---
 // --------------------------------
-let cachedHomePosition: THREE.Vector3 | null = null;
-let cachedHomeTarget: THREE.Vector3 | null = null;
-
-async function computeAndCacheHomeView(components: OBC.Components) {
-  const boxer = components.get(OBC.BoundingBoxer);
-  boxer.addFromModels();
-
-  const [topOrient, rightOrient] = await Promise.all([
-    boxer.getCameraOrientation("top"),
-    boxer.getCameraOrientation("right"),
-  ]);
-  boxer.dispose();
-
-  cachedHomePosition = new THREE.Vector3()
-    .addVectors(topOrient.position, rightOrient.position)
-    .multiplyScalar(0.5);
-  cachedHomeTarget = new THREE.Vector3()
-    .addVectors(topOrient.target, rightOrient.target)
-    .multiplyScalar(0.5);
-}
 
 async function goToHomeView(components: OBC.Components) {
   const worlds = components.get(OBC.Worlds);
   const world = worlds.list.values().next().value;
   if (!world?.camera) return;
 
-  if (!cachedHomePosition || !cachedHomeTarget) {
-    await computeAndCacheHomeView(components);
-  }
+  const boxer = components.get(OBC.BoundingBoxer);
+  boxer.addFromModels();
+  const box = boxer.get();
+  boxer.dispose();
+
+  const center = new THREE.Vector3();
+  box.getCenter(center);
 
   const controls = (world.camera as OBC.OrthoPerspectiveCamera).controls;
-  controls.setOrbitPoint(
-    cachedHomeTarget!.x,
-    cachedHomeTarget!.y,
-    cachedHomeTarget!.z,
-  );
-  await controls.setLookAt(
-    cachedHomePosition!.x, cachedHomePosition!.y, cachedHomePosition!.z,
-    cachedHomeTarget!.x, cachedHomeTarget!.y, cachedHomeTarget!.z,
-    true,
-  );
+  controls.setOrbitPoint(center.x, center.y, center.z);
+  await controls.fitToBox(box, true);
 }
 
 const ANIM_SPEED = 3; // units per second — full rotation in ~0.33s
@@ -268,13 +249,6 @@ function ViewCube({ callbacksRef, modelLoaded, homeResetRef }: ViewCubeProps) {
     camera.position.z = 5;
 
     const animator = createCubeAnimator(group, initialQuat, setCurrentFace);
-
-    // Eagerly compute and cache home view before any user interaction
-    if (modelLoaded && callbacksRef.current) {
-      cachedHomePosition = null;
-      cachedHomeTarget = null;
-      computeAndCacheHomeView(callbacksRef.current.components);
-    }
 
     // Expose to arrow/reset click handlers
     rotateTo.current = (face: CubeFace) => {
