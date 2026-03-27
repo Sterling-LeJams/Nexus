@@ -100,15 +100,23 @@ async function goToHomeView(components: OBC.Components) {
 
   const boxer = components.get(OBC.BoundingBoxer);
   boxer.addFromModels();
-  const box = boxer.get();
+  const orientation = await boxer.getCameraOrientation("front");
   boxer.dispose();
 
-  const center = new THREE.Vector3();
-  box.getCenter(center);
+  const target = orientation.target;
+  const fittedDistance = orientation.position.distanceTo(target);
+
+  // Always place camera at isometric angle (equal front/right/top offset)
+  const isoDir = new THREE.Vector3(1, 1, 1).normalize();
+  const homePosition = target.clone().addScaledVector(isoDir, fittedDistance);
 
   const controls = (world.camera as OBC.OrthoPerspectiveCamera).controls;
-  controls.setOrbitPoint(center.x, center.y, center.z);
-  await controls.fitToBox(box, true);
+  controls.setOrbitPoint(target.x, target.y, target.z);
+  await controls.setLookAt(
+    homePosition.x, homePosition.y, homePosition.z,
+    target.x, target.y, target.z,
+    true,
+  );
 }
 
 const ANIM_SPEED = 3; // units per second — full rotation in ~0.33s
