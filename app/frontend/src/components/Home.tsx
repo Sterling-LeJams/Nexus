@@ -10,7 +10,7 @@ function Home({ onClick }: HomeProps) {
       onClick={onClick}
       title="Home"
       aria-label="Home"
-      className="absolute top-[calc(1rem+15%)] right-[calc(1rem+10%)] bg-transparent border-none opacity-60 hover:opacity-100 transition-opacity cursor-pointer p-0"
+      className="absolute top-[calc(1rem+15%)] right-[calc(1rem+10%)] z-10 bg-transparent border-none opacity-60 hover:opacity-100 transition-opacity cursor-pointer p-0"
     >
       <img src={homeIcon} alt="Home" className="w-6 h-6" />
     </button>

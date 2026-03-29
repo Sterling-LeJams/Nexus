@@ -4,7 +4,7 @@ import type { Level } from '../query/types';
 // --------------------------------
 // --- Active Tool ---
 // --------------------------------
-type ActiveTool = 'sectionCut' | null;
+type ActiveTool = 'sectionCut' | 'sectionCutCube' | null;
 
 // --------------------------------
 // --- Camera Mode ---

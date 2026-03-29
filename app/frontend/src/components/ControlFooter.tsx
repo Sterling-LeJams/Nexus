@@ -1,10 +1,11 @@
-import { useViewerStore } from "../store/viewerStore";
 import { usePanelStore } from "./panels/panelStore";
 import { LEVELS_PANEL_ID } from "./LevelsPanel";
+import { useViewerStore } from "../store/viewerStore";
 import CameraToggle from "./CameraToggle";
-import CutSvg from "../assets/cut-svgrepo-com.svg";
 import HandSvg from "../assets/hand-svgrepo-com.svg";
 import LevelsSvg from "../assets/levels.svg";
+import CutSvg from "../assets/cut-svgrepo-com.svg";
+import CubeSvg from "../assets/cube-svgrepo-com.svg";
 import RulerSvg from "../assets/ruler-svgrepo-com.svg";
 import PencilSvg from "../assets/pencil-svgrepo-com.svg";
 import BoxSelectSvg from "../assets/box-select-svgrepo-com.svg";
@@ -16,6 +17,7 @@ const sections = [
   [
     { icon: null, label: "Camera" },
     { icon: CutSvg, label: "Section Cut" },
+    { icon: CubeSvg, label: "Section Box" },
     { icon: HandSvg, label: "Pan" },
     { icon: LevelsSvg, label: "Levels" },
   ],
@@ -32,22 +34,25 @@ const sections = [
 ];
 
 function ControlFooter() {
-  const { activeTool, setActiveTool } = useViewerStore();
   const levelsVisible = usePanelStore(
     (s) => s.panels[LEVELS_PANEL_ID]?.visible ?? false,
   );
+  const { activeTool, setActiveTool } = useViewerStore();
 
   const handleClick = (label: string) => {
-    if (label === "Section Cut") {
-      setActiveTool(activeTool === "sectionCut" ? null : "sectionCut");
-    } else if (label === "Levels") {
+    if (label === "Levels") {
       usePanelStore.getState().setVisible(LEVELS_PANEL_ID, !levelsVisible);
+    } else if (label === "Section Cut") {
+      setActiveTool(activeTool === "sectionCut" ? null : "sectionCut");
+    } else if (label === "Section Box") {
+      setActiveTool(activeTool === "sectionCutCube" ? null : "sectionCutCube");
     }
   };
 
   const isActive = (label: string) => {
-    if (label === "Section Cut") return activeTool === "sectionCut";
     if (label === "Levels") return levelsVisible;
+    if (label === "Section Cut") return activeTool === "sectionCut";
+    if (label === "Section Box") return activeTool === "sectionCutCube";
     return false;
   };
 

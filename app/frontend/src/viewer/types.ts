@@ -1,4 +1,5 @@
 import * as OBC from "@thatopen/components";
+import type { SectionCutManager, SectionCutCube } from "./controls";
 
 // --------------------------------
 // --- Orbit types ---
@@ -20,17 +21,7 @@ export type OrbitResult = {
 // --- Section Cut types ---
 // --------------------------------
 
-export interface SectionCutParams {
-  world: OBC.World;
-  components: OBC.Components;
-  container: HTMLElement;
-}
-
-export interface SectionCutControls {
-  activate: () => void;
-  deactivate: () => void;
-  cutAtElevation: (elevation: number) => void;
-}
+export type { SectionCutManager, SectionCutPlane, SectionCutCube } from "./controls";
 
 // --------------------------------
 // --- Viewer types ---
@@ -39,7 +30,8 @@ export interface SectionCutControls {
 export type ViewerCallbacks = {
   loadIfc: (source: string | File) => Promise<void>;
   downloadFragments: () => Promise<void>;
-  cutAtElevation: (elevation: number) => void;
+  sectionCutManager: SectionCutManager;
+  sectionCutCube: SectionCutCube;
   components: OBC.Components;
 };
 

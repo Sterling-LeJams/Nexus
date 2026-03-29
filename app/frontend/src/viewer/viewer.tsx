@@ -2,7 +2,7 @@ import * as OBC from "@thatopen/components";
 import * as THREE from "three";
 import { useEffect, useRef } from "react";
 import { useThemeStore, LIGHT_BG, DARK_BG } from "../store/themeStore";
-import { orbit, sectionCut } from "./controls";
+import { orbit, SectionCutManager, SectionCutCube } from "./controls";
 import { useViewerStore } from "../store/viewerStore";
 import { queryLevels } from "../query";
 import type { Props } from "./types";
@@ -17,7 +17,8 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
     let cleanupStoreSub: (() => void) | null = null;
     let cleanupCameraMode: (() => void) | null = null;
     let cleanupEscape: (() => void) | null = null;
-    let sectionCutRef: ReturnType<typeof sectionCut> | null = null;
+    let scManager: SectionCutManager | null = null;
+    let scCube: SectionCutCube | null = null;
     let componentsRef: OBC.Components | null = null;
     let workerBlobUrl: string | null = null;
 
@@ -69,17 +70,22 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
       cleanupOrbit = orbitControls.cleanup;
 
       // --- Section Cut tool ---
-      const sc = sectionCut({ world, components, container });
-      sectionCutRef = sc;
+      scManager = new SectionCutManager({ world, components, container });
+      scCube = new SectionCutCube({ world, components, container });
 
       // Subscribe to viewerStore to activate/deactivate section cut
       // Only react when activeTool actually changes — not on every store update
       cleanupStoreSub = useViewerStore.subscribe((state, prevState) => {
         if (state.activeTool === prevState.activeTool) return;
         if (state.activeTool === "sectionCut") {
-          sc.activate();
+          scCube!.deactivate();
+          scManager!.activateInteractive();
+        } else if (state.activeTool === "sectionCutCube") {
+          scManager!.deactivate();
+          scCube!.activate();
         } else {
-          sc.deactivate();
+          scManager!.deactivate();
+          scCube!.deactivate();
         }
       });
 
@@ -140,6 +146,22 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
         model.useCamera(world.camera.three);
         world.scene.three.add(model.object);
         fragments.core.update(true);
+
+        setTimeout(() => {
+          const delayedBox = new THREE.Box3().setFromObject(model.object);
+          console.log("delayed Box3 (1s):", delayedBox);
+          console.log("delayed isEmpty:", delayedBox.isEmpty());
+          console.log("delayed size:", delayedBox.getSize(new THREE.Vector3()));
+          console.log("delayed center:", delayedBox.getCenter(new THREE.Vector3()));
+
+          const boxer = components.get(OBC.BoundingBoxer);
+          boxer.addFromModels();
+          const boxerBox = boxer.get();
+          console.log("BoundingBoxer box:", boxerBox);
+          console.log("BoundingBoxer size:", boxerBox.getSize(new THREE.Vector3()));
+          boxer.dispose();
+        }, 1000);
+
         onModelLoaded();
       });
 
@@ -195,7 +217,8 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
       onInit({
         loadIfc,
         downloadFragments,
-        cutAtElevation: sc.cutAtElevation,
+        sectionCutManager: scManager,
+        sectionCutCube: scCube,
         components,
       });
     };
@@ -209,7 +232,8 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
       cleanupStoreSub?.();
       cleanupCameraMode?.();
       cleanupEscape?.();
-      if (sectionCutRef) sectionCutRef.deactivate();
+      scManager?.dispose();
+      scCube?.dispose();
       if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl);
       componentsRef?.dispose();
     };

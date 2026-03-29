@@ -73,11 +73,7 @@ async function goToModelView(face: CubeFace, components: OBC.Components) {
   boxer.dispose();
 
   const controls = (world.camera as OBC.OrthoPerspectiveCamera).controls;
-  controls.setOrbitPoint(
-    orientation.target.x,
-    orientation.target.y,
-    orientation.target.z,
-  );
+  controls.setFocalOffset(0, 0, 0, false);
   await controls.setLookAt(
     orientation.position.x,
     orientation.position.y,
@@ -111,10 +107,14 @@ async function goToHomeView(components: OBC.Components) {
   const homePosition = target.clone().addScaledVector(isoDir, fittedDistance);
 
   const controls = (world.camera as OBC.OrthoPerspectiveCamera).controls;
-  controls.setOrbitPoint(target.x, target.y, target.z);
+  controls.setFocalOffset(0, 0, 0, false);
   await controls.setLookAt(
-    homePosition.x, homePosition.y, homePosition.z,
-    target.x, target.y, target.z,
+    homePosition.x,
+    homePosition.y,
+    homePosition.z,
+    target.x,
+    target.y,
+    target.z,
     true,
   );
 }
@@ -265,12 +265,14 @@ function ViewCube({ callbacksRef, modelLoaded, homeResetRef }: ViewCubeProps) {
         goToModelView(face, callbacksRef.current.components);
       }
     };
+
     resetRotation.current = () => {
       animator.startResetRotation();
       if (callbacksRef.current) {
         goToHomeView(callbacksRef.current.components);
       }
     };
+
     if (homeResetRef) {
       homeResetRef.current = resetRotation.current;
     }

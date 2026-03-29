@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import * as OBC from "@thatopen/components";
 import { useViewerStore } from "../store/viewerStore";
 import { usePanelStore } from "./panels/panelStore";
 import { Panel } from "./panels/Panel";
@@ -46,24 +45,14 @@ function LevelsPanel({ callbacksRef }: LevelsPanelProps) {
     }
     if (!visible) {
       setSelectedLevel(null);
-      const components = callbacksRef.current?.components;
-      if (components) {
-        const clipper = components.get(OBC.Clipper);
-        clipper.deleteAll();
-        clipper.enabled = false;
-      }
+      callbacksRef.current?.sectionCutManager.deactivate();
     }
   }, [visible]);
 
   const handleLevelClick = (levelName: string) => {
     if (selectedLevel === levelName) {
       setSelectedLevel(null);
-      const components = callbacksRef.current?.components;
-      if (components) {
-        const clipper = components.get(OBC.Clipper);
-        clipper.deleteAll();
-        clipper.enabled = false;
-      }
+      callbacksRef.current?.sectionCutManager.deactivate();
       return;
     }
 
@@ -81,7 +70,7 @@ function LevelsPanel({ callbacksRef }: LevelsPanelProps) {
       ? levelAbove.elevation - OFFSET_M
       : sortedLevels[idx].elevation + DEFAULT_STOREY_HEIGHT;
 
-    callbacksRef.current?.cutAtElevation(cutElevation);
+    callbacksRef.current?.sectionCutManager.cutAtElevation(cutElevation);
   };
 
   return (
