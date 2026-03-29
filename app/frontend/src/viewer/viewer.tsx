@@ -21,6 +21,7 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
     let scCube: SectionCutCube | null = null;
     let componentsRef: OBC.Components | null = null;
     let workerBlobUrl: string | null = null;
+    let cleanupNavBoundary: (() => void) | null = null;
 
     const init = async () => {
       if (!containerRef.current) return;
@@ -147,19 +148,40 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
         world.scene.three.add(model.object);
         fragments.core.update(true);
 
+        // Geometry streams in after onItemSet — wait before computing bounds.
         setTimeout(() => {
-          const delayedBox = new THREE.Box3().setFromObject(model.object);
-          console.log("delayed Box3 (1s):", delayedBox);
-          console.log("delayed isEmpty:", delayedBox.isEmpty());
-          console.log("delayed size:", delayedBox.getSize(new THREE.Vector3()));
-          console.log("delayed center:", delayedBox.getCenter(new THREE.Vector3()));
+          if (disposed) return;
+          const modelBox = new THREE.Box3().setFromObject(model.object);
+          if (modelBox.isEmpty()) return;
 
-          const boxer = components.get(OBC.BoundingBoxer);
-          boxer.addFromModels();
-          const boxerBox = boxer.get();
-          console.log("BoundingBoxer box:", boxerBox);
-          console.log("BoundingBoxer size:", boxerBox.getSize(new THREE.Vector3()));
-          boxer.dispose();
+          const modelCenter = modelBox.getCenter(new THREE.Vector3());
+          const diagonal = modelBox.getSize(new THREE.Vector3()).length();
+          const maxDistance = diagonal * 3;
+
+          const camPos = new THREE.Vector3();
+          const controls = (world.camera as OBC.OrthoPerspectiveCamera)
+            .controls;
+          let clamping = false;
+
+          const onCameraUpdate = () => {
+            if (clamping) return;
+            world.camera.three.getWorldPosition(camPos);
+            const dist = camPos.distanceTo(modelCenter);
+            if (dist > maxDistance) {
+              clamping = true;
+              const dir = camPos.clone().sub(modelCenter).normalize();
+              const clamped = modelCenter
+                .clone()
+                .addScaledVector(dir, maxDistance);
+              controls.setPosition(clamped.x, clamped.y, clamped.z, false);
+              clamping = false;
+            }
+          };
+
+          controls.addEventListener("update", onCameraUpdate);
+          cleanupNavBoundary = () => {
+            controls.removeEventListener("update", onCameraUpdate);
+          };
         }, 1000);
 
         onModelLoaded();
@@ -232,6 +254,7 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
       cleanupStoreSub?.();
       cleanupCameraMode?.();
       cleanupEscape?.();
+      cleanupNavBoundary?.();
       scManager?.dispose();
       scCube?.dispose();
       if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl);
