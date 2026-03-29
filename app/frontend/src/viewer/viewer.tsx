@@ -156,31 +156,29 @@ function InitViewer({ onInit, onModelLoaded }: Props) {
 
           const modelCenter = modelBox.getCenter(new THREE.Vector3());
           const diagonal = modelBox.getSize(new THREE.Vector3()).length();
-          const maxDistance = diagonal * 3;
+          const maxDistance = diagonal * 1.5;
 
           const camPos = new THREE.Vector3();
-          const controls = (world.camera as OBC.OrthoPerspectiveCamera)
-            .controls;
-          let clamping = false;
 
-          const onCameraUpdate = () => {
-            if (clamping) return;
+          const onWheel = (e: WheelEvent) => {
             world.camera.three.getWorldPosition(camPos);
             const dist = camPos.distanceTo(modelCenter);
-            if (dist > maxDistance) {
-              clamping = true;
-              const dir = camPos.clone().sub(modelCenter).normalize();
-              const clamped = modelCenter
-                .clone()
-                .addScaledVector(dir, maxDistance);
-              controls.setPosition(clamped.x, clamped.y, clamped.z, false);
-              clamping = false;
+            if (dist >= maxDistance && e.deltaY > 0) {
+              e.preventDefault();
+              e.stopPropagation();
             }
           };
 
-          controls.addEventListener("update", onCameraUpdate);
+          container.addEventListener("wheel", onWheel, {
+            passive: false,
+            capture: true,
+          });
           cleanupNavBoundary = () => {
-            controls.removeEventListener("update", onCameraUpdate);
+            container.removeEventListener(
+              "wheel",
+              onWheel,
+              { capture: true } as EventListenerOptions,
+            );
           };
         }, 1000);
 
