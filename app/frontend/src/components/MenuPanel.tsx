@@ -86,10 +86,7 @@ function MenuPanel({ callbacksRef, modelLoaded, onModelLoad }: MenuPanelProps) {
             </p>
           ) : menu === "open" ? (
             !modelLoaded ? (
-              <button
-                style={btn("#2563eb")}
-                onClick={() => setMenu("choose")}
-              >
+              <button style={btn("#2563eb")} onClick={() => setMenu("choose")}>
                 Load Model
               </button>
             ) : (
@@ -102,17 +99,14 @@ function MenuPanel({ callbacksRef, modelLoaded, onModelLoad }: MenuPanelProps) {
             )
           ) : menu === "choose" ? (
             <>
-              <button
-                style={btn("#2563eb")}
-                onClick={() => handleFileUpload()}
-              >
-                Load Example IFC
+              <button style={btn("#2563eb")} onClick={() => handleFileUpload()}>
+                Load Example
               </button>
               <button
                 style={btn("#4f46e5")}
                 onClick={() => setMenu("selectIfc")}
               >
-                Select IFC
+                Select
               </button>
               <button
                 style={{
