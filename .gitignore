@@ -1,0 +1,21 @@
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+
+# Rust
+target/
+*.rs.bk
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

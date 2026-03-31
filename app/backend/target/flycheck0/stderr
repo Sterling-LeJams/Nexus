@@ -1,5 +1,5 @@
-   0.378800500s  INFO prepare_target{force=false package_id=backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend) target="backend"}: cargo::core::compiler::fingerprint: fingerprint error for backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend)/Check { test: false }/TargetInner { name: "backend", doc: true, ..: with_path("/Users/sjames/Documents/local_programs/Nexus/app/backend/src/main.rs", Edition2024) }
-   0.378834792s  INFO prepare_target{force=false package_id=backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend) target="backend"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/sjames/Documents/local_programs/Nexus/app/backend/target/debug/.fingerprint/backend-c3a245d4148eb39e/bin-backend`
+   0.302243708s  INFO prepare_target{force=false package_id=backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend) target="backend"}: cargo::core::compiler::fingerprint: fingerprint error for backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend)/Check { test: false }/TargetInner { name: "backend", doc: true, ..: with_path("/Users/sjames/Documents/local_programs/Nexus/app/backend/src/main.rs", Edition2024) }
+   0.302577041s  INFO prepare_target{force=false package_id=backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend) target="backend"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/sjames/Documents/local_programs/Nexus/app/backend/target/debug/.fingerprint/backend-3728a858d6fa03e7/bin-backend`
 
 Caused by:
     No such file or directory (os error 2)
@@ -22,8 +22,8 @@ Stack backtrace:
   14: std::rt::lang_start::<()>::{closure#0}
   15: std::rt::lang_start_internal
   16: _main
-   0.431514750s  INFO prepare_target{force=false package_id=backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend) target="backend"}: cargo::core::compiler::fingerprint: fingerprint error for backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend)/Check { test: true }/TargetInner { name: "backend", doc: true, ..: with_path("/Users/sjames/Documents/local_programs/Nexus/app/backend/src/main.rs", Edition2024) }
-   0.431527125s  INFO prepare_target{force=false package_id=backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend) target="backend"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/sjames/Documents/local_programs/Nexus/app/backend/target/debug/.fingerprint/backend-e4954fac2a257b1d/test-bin-backend`
+   0.357560583s  INFO prepare_target{force=false package_id=backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend) target="backend"}: cargo::core::compiler::fingerprint: fingerprint error for backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend)/Check { test: true }/TargetInner { name: "backend", doc: true, ..: with_path("/Users/sjames/Documents/local_programs/Nexus/app/backend/src/main.rs", Edition2024) }
+   0.357580500s  INFO prepare_target{force=false package_id=backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend) target="backend"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/sjames/Documents/local_programs/Nexus/app/backend/target/debug/.fingerprint/backend-24ff9b0a4617ddae/test-bin-backend`
 
 Caused by:
     No such file or directory (os error 2)
@@ -47,4 +47,4 @@ Stack backtrace:
   15: std::rt::lang_start_internal
   16: _main
     Checking backend v0.1.0 (/Users/sjames/Documents/local_programs/Nexus/app/backend)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.56s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.70s
